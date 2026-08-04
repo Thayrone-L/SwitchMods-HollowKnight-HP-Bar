@@ -1,0 +1,8 @@
+dump/
+tools/
+dist/
+logs/
+*.keys
+*.nsp
+*.xci
+exlaunch/main-generated.json
