@@ -1,0 +1,40 @@
+diff --git a/source/lib/util/sys/mem_layout.cpp b/source/lib/util/sys/mem_layout.cpp
+index 0406b92..c79babc 100644
+--- a/source/lib/util/sys/mem_layout.cpp
++++ b/source/lib/util/sys/mem_layout.cpp
+@@ -127,6 +127,35 @@ namespace exl::util {
+         /* Exit once we've wrapped the address space. */
+         } while(offset >= prevOffset);
+ 
++        /*
++         * Some Unity IL2CPP titles expose an NSO layout that does not line up
++         * with exlaunch's positional module assumptions. If Main is missing,
++         * recover it by selecting the largest detected module, excluding
++         * rtld and this injected module. SwitchPlayer.nss is substantially
++         * larger than the SDK and multimedia modules in Hollow Knight.
++         */
++        if (!moduleBitset[static_cast<int>(ModuleIndex::Main)]) {
++            int fallbackIndex = -1;
++            size_t fallbackSize = 0;
++            const auto selfStart = reinterpret_cast<uintptr_t>(&__module_start);
++
++            for (int i = static_cast<int>(ModuleIndex::Main);
++                 i < static_cast<int>(ModuleIndex::End); ++i) {
++                if (!moduleBitset[i])
++                    continue;
++                const auto& candidate = moduleInfos[i];
++                if (candidate.m_Total.m_Start == selfStart)
++                    continue;
++                if (candidate.m_Total.m_Size > fallbackSize) {
++                    fallbackIndex = i;
++                    fallbackSize = candidate.m_Total.m_Size;
++                }
++            }
++            EXL_ASSERT(fallbackIndex >= 0);
++            moduleInfos[static_cast<int>(ModuleIndex::Main)] = moduleInfos[fallbackIndex];
++            moduleBitset[static_cast<int>(ModuleIndex::Main)] = true;
++        }
++
+         /* We must find at least one module. */
+         EXL_ASSERT(moduleBitset[static_cast<int>(ModuleIndex::Rtld)]);
+ 
