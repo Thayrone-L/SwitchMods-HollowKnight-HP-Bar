@@ -8,6 +8,8 @@ Target: Hollow Knight 1.4.3.2b, update title `0100633007D48800`, version
 - `HealthManager.TakeDamage`: RVA `0x163F50`
 - `HealthManager.ApplyExtraDamage`: RVA `0x1656B0`
 - `HealthManager.OnDisable`: RVA `0x1630C0`
+- `HeroController.Die`: RVA `0x172200`
+- `HeroController.DieFromHazard`: RVA `0x172270`
 - `HealthManager.hp`: object offset `0xE8`
 - `HealthManager.enemyType`: object offset `0xEC`
 - Observed `enemyType == 0`: ordinary enemy (`Climber 1`)
@@ -38,6 +40,8 @@ Splatter, `5` RuinsWater, `6` SharpShadow, `7` NailBeam.
 
 Effective damage is `hpBefore - hpAfter`. `DamageDealt` is the raw/reported
 damage and may differ because of target rules, multipliers or invulnerability.
+Both player-death paths clear boss state, ordinary-enemy slots and damage
+popups immediately.
 
 ## Unity object data
 

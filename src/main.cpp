@@ -12,6 +12,8 @@ namespace hk::hpbar {
 constexpr std::ptrdiff_t kHealthManagerTakeDamageRva = 0x163F50;
 constexpr std::ptrdiff_t kHealthManagerApplyExtraDamageRva = 0x1656B0;
 constexpr std::ptrdiff_t kHealthManagerOnDisableRva = 0x1630C0;
+constexpr std::ptrdiff_t kHeroControllerDieRva = 0x172200;
+constexpr std::ptrdiff_t kHeroControllerDieFromHazardRva = 0x172270;
 constexpr std::ptrdiff_t kHealthManagerHpOffset = 0xE8;
 constexpr std::ptrdiff_t kInputHandlerOnGuiRva = 0xD21E0;
 constexpr std::ptrdiff_t kGuiDrawTextureRva = 0xB01230;
@@ -157,6 +159,21 @@ int g_lastEnemyInstanceId = 0;
 int g_lastEnemyType = 0;
 EnemySlot g_enemySlots[kEnemySlotCount]{};
 DamagePopup g_damagePopups[kDamagePopupCount]{};
+
+void ClearCombatHud() {
+    g_lastHitHealthManager = 0;
+    g_hpBeforeHit = 0;
+    g_hpAfterHit = 0;
+    g_observedMaxHp = 0;
+    g_hitCount = 0;
+    g_lastEnemyName = nullptr;
+    g_lastEnemyStats = nullptr;
+    g_bossHpText = nullptr;
+    g_lastEnemyInstanceId = 0;
+    g_lastEnemyType = 0;
+    for (auto& slot : g_enemySlots) slot = EnemySlot{};
+    for (auto& popup : g_damagePopups) popup = DamagePopup{};
+}
 
 template <typename Fn>
 Fn MainFunction(std::ptrdiff_t rva) {
@@ -387,6 +404,21 @@ HOOK_DEFINE_TRAMPOLINE(HealthManagerOnDisableHook) {
     }
 };
 
+HOOK_DEFINE_TRAMPOLINE(HeroControllerDieHook) {
+    static void* Callback(void* self, const void* methodInfo) {
+        ClearCombatHud();
+        return Orig(self, methodInfo);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(HeroControllerDieFromHazardHook) {
+    static void* Callback(void* self, int hazardType, float angle,
+                          const void* methodInfo) {
+        ClearCombatHud();
+        return Orig(self, hazardType, angle, methodInfo);
+    }
+};
+
 HOOK_DEFINE_TRAMPOLINE(InputHandlerOnGuiHook) {
     static void Callback(void* self, const void* methodInfo) {
         Orig(self, methodInfo);
@@ -586,6 +618,12 @@ extern "C" void exl_main(void*, void*) {
     );
     hk::hpbar::HealthManagerOnDisableHook::InstallAtOffset(
         hk::hpbar::kHealthManagerOnDisableRva
+    );
+    hk::hpbar::HeroControllerDieHook::InstallAtOffset(
+        hk::hpbar::kHeroControllerDieRva
+    );
+    hk::hpbar::HeroControllerDieFromHazardHook::InstallAtOffset(
+        hk::hpbar::kHeroControllerDieFromHazardRva
     );
     hk::hpbar::InputHandlerOnGuiHook::InstallAtOffset(
         hk::hpbar::kInputHandlerOnGuiRva
