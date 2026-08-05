@@ -12,8 +12,14 @@ Target: Hollow Knight 1.4.3.2b, update title `0100633007D48800`, version
 - `HeroController.DieFromHazard`: RVA `0x172270`
 - `HealthManager.hp`: object offset `0xE8`
 - `HealthManager.enemyType`: object offset `0xEC`
-- Observed `enemyType == 0`: ordinary enemy (`Climber 1`)
-- Observed `enemyType == 1`: boss (`Nightmare King Grimm`)
+- `HealthManager.battleScene`: object offset `0x110`
+- `HealthManager.showGodfinderIcon`: object offset `0x16C`
+- `HealthManager.unlockBossScene`: object offset `0x178`
+
+`enemyType` is not a reliable ordinary-enemy/boss discriminator. Boss
+classification uses the structural boss markers `battleScene`,
+`showGodfinderIcon` and `unlockBossScene`; every target without these markers
+uses an ordinary overhead bar, regardless of HP or `enemyType`.
 
 `InstanceID` identifies the current Unity object instance. It is useful for
 tracking one live target but must not be treated as a stable catalog ID across

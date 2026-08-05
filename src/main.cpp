@@ -34,8 +34,10 @@ constexpr std::ptrdiff_t kApplicationPersistentDataPathRva = 0x97A690;
 constexpr std::ptrdiff_t kCameraWorldToScreenPointRva = 0x97ECB0;
 constexpr std::ptrdiff_t kCameraGetMainRva = 0x97F320;
 constexpr std::ptrdiff_t kObjectOpImplicitRva = 0x98CC10;
-constexpr int kMinimumInitialHpForBar = 50;
 constexpr std::ptrdiff_t kHealthManagerEnemyTypeOffset = 0xEC;
+constexpr std::ptrdiff_t kHealthManagerBattleSceneOffset = 0x110;
+constexpr std::ptrdiff_t kHealthManagerShowGodfinderIconOffset = 0x16C;
+constexpr std::ptrdiff_t kHealthManagerUnlockBossSceneOffset = 0x178;
 constexpr const char* kTelemetryFileName = "/hk_hpbar_telemetry.csv";
 
 struct Rect {
@@ -157,6 +159,7 @@ Il2CppString* g_lastEnemyStats = nullptr;
 Il2CppString* g_bossHpText = nullptr;
 int g_lastEnemyInstanceId = 0;
 int g_lastEnemyType = 0;
+bool g_lastEnemyIsBoss = false;
 EnemySlot g_enemySlots[kEnemySlotCount]{};
 DamagePopup g_damagePopups[kDamagePopupCount]{};
 
@@ -171,6 +174,7 @@ void ClearCombatHud() {
     g_bossHpText = nullptr;
     g_lastEnemyInstanceId = 0;
     g_lastEnemyType = 0;
+    g_lastEnemyIsBoss = false;
     for (auto& slot : g_enemySlots) slot = EnemySlot{};
     for (auto& popup : g_damagePopups) popup = DamagePopup{};
 }
@@ -225,6 +229,14 @@ void WriteTelemetry(void* healthManager, int hpBefore, int hpAfter,
     g_lastEnemyType = *reinterpret_cast<volatile int*>(
         address + kHealthManagerEnemyTypeOffset
     );
+    const auto battleScene = *reinterpret_cast<void* volatile*>(
+        address + kHealthManagerBattleSceneOffset);
+    const bool showGodfinderIcon = *reinterpret_cast<volatile bool*>(
+        address + kHealthManagerShowGodfinderIconOffset);
+    const auto unlockBossScene = *reinterpret_cast<void* volatile*>(
+        address + kHealthManagerUnlockBossSceneOffset);
+    g_lastEnemyIsBoss = battleScene != nullptr || showGodfinderIcon ||
+        unlockBossScene != nullptr;
 
     char stats[160];
     std::snprintf(stats, sizeof(stats),
@@ -242,7 +254,7 @@ void WriteTelemetry(void* healthManager, int hpBefore, int hpAfter,
 }
 
 void UpdateEnemySlot(void* healthManager, int hpBefore, int hpAfter) {
-    if (healthManager == nullptr || g_lastEnemyType != 0) return;
+    if (healthManager == nullptr || g_lastEnemyIsBoss) return;
     const auto manager = reinterpret_cast<std::uintptr_t>(healthManager);
     EnemySlot* slot = nullptr;
     EnemySlot* freeSlot = nullptr;
@@ -393,6 +405,7 @@ HOOK_DEFINE_TRAMPOLINE(HealthManagerOnDisableHook) {
             g_bossHpText = nullptr;
             g_lastEnemyInstanceId = 0;
             g_lastEnemyType = 0;
+            g_lastEnemyIsBoss = false;
             g_hpBeforeHit = 0;
             g_hpAfterHit = 0;
             g_observedMaxHp = 0;
@@ -548,7 +561,7 @@ HOOK_DEFINE_TRAMPOLINE(InputHandlerOnGuiHook) {
         setColor(nullptr, previousColor, nullptr);
 
         if (g_hitCount == 0 || g_hpAfterHit <= 0 ||
-            g_lastEnemyType != 1) {
+            !g_lastEnemyIsBoss) {
             return;
         }
 
